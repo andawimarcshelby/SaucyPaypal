@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15
+    container_name: saucypaypal_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: saucypaypal_db
+      POSTGRES_USER: saucypaypal_user
+      POSTGRES_PASSWORD: secure_password_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - saucypaypal_net
+
+  # Laravel Backend (PHP 8.2 + Apache or PHP built-in server)
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saucypaypal_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=saucypaypal_db
+      - DB_USERNAME=saucypaypal_user
+      - DB_PASSWORD=secure_password_123
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8000
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      - db
+    networks:
+      - saucypaypal_net
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+
+  # React Frontend (Vite Dev Server)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: saucypaypal_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+    networks:
+      - saucypaypal_net
+
+volumes:
+  pgdata:
+
+networks:
+  saucypaypal_net:
+    driver: bridge
